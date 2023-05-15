@@ -1,0 +1,383 @@
+name: greentable
+services:
+  booking:
+    build:
+      context: D:\Github\GreenTable\backend
+      dockerfile: ./Booking/booking.Dockerfile
+    environment:
+      BOOKING_DB_URL: mongodb+srv://Booking:booking@cluster0.cljlebi.mongodb.net/?retryWrites=true&w=majority
+      PYTHONUNBUFFERED: "1"
+    image: nickyex2/booking:latest
+    networks:
+      kong-net: null
+    ports:
+    - mode: ingress
+      target: 5003
+      published: "5003"
+      protocol: tcp
+    restart: always
+  cancel-booking:
+    build:
+      context: D:\Github\GreenTable\backend
+      dockerfile: ./cancel_booking.Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_started
+    environment:
+      PYTHONUNBUFFERED: "1"
+      booking_url: http://booking:5003/booking
+      catalog_url: http://catalog:5002/catalog
+      rabbit_host: rabbitmq
+      rabbit_port: "5672"
+    image: nickyex2/cancel-booking:latest
+    networks:
+      kong-net: null
+    ports:
+    - mode: ingress
+      target: 5005
+      published: "5005"
+      protocol: tcp
+    restart: always
+  catalog:
+    build:
+      context: D:\Github\GreenTable\backend
+      dockerfile: ./Catalog/catalog.Dockerfile
+    environment:
+      CATALOG_DB_URL: mongodb+srv://Catalog:catalog@cluster0.cljlebi.mongodb.net/?retryWrites=true&w=majority
+      GOOGLE_API_KEY: AIzaSyA6ju8_1Q2zuf3DomUOFVplprJHuKpJHtw
+      PYTHONUNBUFFERED: "1"
+    image: nickyex2/catalog:latest
+    networks:
+      kong-net: null
+    ports:
+    - mode: ingress
+      target: 5002
+      published: "5002"
+      protocol: tcp
+    restart: always
+  customer:
+    build:
+      context: D:\Github\GreenTable\backend
+      dockerfile: ./Customer/customer.Dockerfile
+    environment:
+      CUSTOMER_DB_URL: mongodb+srv://Customer:customer@cluster0.cljlebi.mongodb.net/?retryWrites=true&w=majority
+      PYTHONUNBUFFERED: "1"
+    image: nickyex2/customer:latest
+    networks:
+      kong-net: null
+    ports:
+    - mode: ingress
+      target: 5001
+      published: "5001"
+      protocol: tcp
+    restart: always
+  error:
+    build:
+      context: D:\Github\GreenTable\backend
+      dockerfile: ./Error/error.Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_started
+    environment:
+      PYTHONUNBUFFERED: "1"
+      rabbit_host: rabbitmq
+      rabbit_port: "5672"
+    image: nickyex2/error:latest
+    networks:
+      kong-net: null
+    restart: always
+  kong:
+    depends_on:
+      kong-database:
+        condition: service_started
+      kong-migration:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+    environment:
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: kong-database
+      KONG_PG_PASSWORD: password
+      KONG_PG_USER: kong
+      KONG_PROXY_LISTEN: 0.0.0.0:8000
+    image: kong:2.0.4
+    networks:
+      kong-net: null
+    platform: linux/amd64
+    ports:
+    - mode: ingress
+      target: 8000
+      published: "8000"
+      protocol: tcp
+    - mode: ingress
+      target: 8001
+      published: "8001"
+      protocol: tcp
+    - mode: ingress
+      target: 8443
+      published: "8443"
+      protocol: tcp
+    - mode: ingress
+      target: 8444
+      published: "8444"
+      protocol: tcp
+    restart: always
+  kong-database:
+    environment:
+      POSTGRES_DB: kong
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: kong
+    healthcheck:
+      test:
+      - CMD
+      - pg_isready
+      - -U
+      - kong
+      timeout: 5s
+      interval: 10s
+      retries: 5
+    image: postgres:9.6
+    networks:
+      kong-net: null
+    platform: linux/amd64
+    ports:
+    - mode: ingress
+      target: 5432
+      published: "5432"
+      protocol: tcp
+    restart: always
+    volumes:
+    - type: volume
+      source: pgdata
+      target: /var/lib/postgresql/data
+      volume: {}
+  kong-migration:
+    command:
+    - kong
+    - migrations
+    - bootstrap
+    depends_on:
+      kong-database:
+        condition: service_started
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: kong-database
+      KONG_PG_PASSWORD: password
+      KONG_PG_USER: kong
+    image: kong:2.0.4
+    networks:
+      kong-net: null
+    platform: linux/amd64
+    restart: on-failure
+  konga:
+    depends_on:
+      kong:
+        condition: service_started
+    environment:
+      DB_ADAPTER: postgres
+      DB_DATABASE: konga_db
+      DB_HOST: kong-database
+      DB_PASSWORD: password
+      DB_USER: kong
+    image: pantsel/konga
+    networks:
+      kong-net: null
+    ports:
+    - mode: ingress
+      target: 1337
+      published: "1337"
+      protocol: tcp
+    restart: always
+    volumes:
+    - type: volume
+      source: kongadata
+      target: /app/kongadata
+      volume: {}
+  make-payment:
+    build:
+      context: D:\Github\GreenTable\backend
+      dockerfile: ./make_payment.Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_started
+    environment:
+      PYTHONUNBUFFERED: "1"
+      booking_url: http://booking:5003/booking
+      customer_url: http://customer:5001/customer
+      payment_url: http://payment:5004/payment
+      rabbit_host: rabbitmq
+      rabbit_port: "5672"
+    image: nickyex2/make-payment:latest
+    networks:
+      kong-net: null
+    ports:
+    - mode: ingress
+      target: 5007
+      published: "5007"
+      protocol: tcp
+    restart: always
+  notification:
+    build:
+      context: D:\Github\GreenTable\backend
+      dockerfile: ./Notification/notification.Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_started
+    environment:
+      PYTHONUNBUFFERED: "1"
+      rabbit_host: rabbitmq
+      rabbit_port: "5672"
+      telegram_url: http://telegram-send-api:5015
+      twilio_url: http://twilio-sendgrid-api:5014
+    image: nickyex2/notification:latest
+    networks:
+      kong-net: null
+    restart: always
+  notify-customer:
+    build:
+      context: D:\Github\GreenTable\backend
+      dockerfile: ./notify_customer.Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_started
+    environment:
+      PYTHONUNBUFFERED: "1"
+      rabbit_host: rabbitmq
+      rabbit_port: "5672"
+      waitlist_url: http://waitlist:5010/waitlist
+    image: nickyex2/notify-customer:latest
+    networks:
+      kong-net: null
+    restart: always
+  payment:
+    build:
+      context: D:\Github\GreenTable\backend
+      dockerfile: ./Payment/payment.Dockerfile
+    environment:
+      PYTHONUNBUFFERED: "1"
+      stripe_url: http://stripe-api:5016/api/stripepay
+    expose:
+    - "5004"
+    image: nickyex2/payment:latest
+    networks:
+      kong-net: null
+    restart: always
+  place-booking:
+    build:
+      context: D:\Github\GreenTable\backend
+      dockerfile: ./place_booking.Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_started
+    environment:
+      PYTHONUNBUFFERED: "1"
+      booking_url: http://booking:5003/booking
+      catalog_url: http://catalog:5002/catalog
+      customer_url: http://customer:5001/customer
+      rabbit_host: rabbitmq
+      rabbit_port: "5672"
+      waitlist_url: http://waitlist:5010/waitlist
+    image: nickyex2/place-booking:latest
+    networks:
+      kong-net: null
+    ports:
+    - mode: ingress
+      target: 5006
+      published: "5006"
+      protocol: tcp
+    restart: always
+  rabbitmq:
+    hostname: esd-rabbit
+    image: rabbitmq:3-management
+    networks:
+      kong-net: null
+    ports:
+    - mode: ingress
+      target: 5672
+      published: "5672"
+      protocol: tcp
+    - mode: ingress
+      target: 15672
+      published: "15672"
+      protocol: tcp
+    restart: always
+    volumes:
+    - type: volume
+      source: rabbitmq_data
+      target: /var/lib/rabbitmq
+      volume: {}
+  stripe-api:
+    build:
+      context: D:\Github\GreenTable\backend
+      dockerfile: ./APIs/stripe_api.Dockerfile
+    environment:
+      PYTHONUNBUFFERED: "1"
+      STRIPE_SECRET_KEY: sk_test_51MjdbwKkGz7KVHvaysD9aV92Xibd5j2jX5yrCt2VK1bP5NB4xkqtQRv7pcbNPKV9O1jfi0LNUHyTIZbusVHGXG2K00ZtZZus1N
+    expose:
+    - "5016"
+    image: nickyex2/stripe-api:latest
+    networks:
+      kong-net: null
+    restart: always
+  telegram-send-api:
+    build:
+      context: D:\Github\GreenTable\backend
+      dockerfile: ./APIs/telegram_send_api.Dockerfile
+    depends_on:
+      notification:
+        condition: service_started
+    environment:
+      PYTHONUNBUFFERED: "1"
+      TELEGRAM_API_HASH: f6b5db22bd5117cab0876064ca067000
+      TELEGRAM_API_ID: "20480107"
+      TELEGRAM_API_SESSION: s3ndm3@n0tif1cationf0rt3l3gr@m
+    expose:
+    - "5015"
+    image: nickyex2/telegram-send-api:latest
+    networks:
+      kong-net: null
+    restart: always
+  twilio-sendgrid-api:
+    build:
+      context: D:\Github\GreenTable\backend
+      dockerfile: ./APIs/twilio_sendgrid_api.Dockerfile
+    depends_on:
+      notification:
+        condition: service_started
+    environment:
+      PYTHONUNBUFFERED: "1"
+      SENDGRID_API_KEY: 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
+    expose:
+    - "5014"
+    image: nickyex2/twilio-sendgrid-api:latest
+    networks:
+      kong-net: null
+    restart: always
+  waitlist:
+    build:
+      context: D:\Github\GreenTable\backend
+      dockerfile: ./WaitList/waitlist.Dockerfile
+    environment:
+      PYTHONUNBUFFERED: "1"
+      WAITLIST_DB_URL: mongodb+srv://WaitList:waitlist@cluster0.cljlebi.mongodb.net/?retryWrites=true&w=majority
+    image: nickyex2/waitlist:latest
+    networks:
+      kong-net: null
+    ports:
+    - mode: ingress
+      target: 5010
+      published: "5010"
+      protocol: tcp
+    restart: always
+networks:
+  kong-net:
+    name: greentable_kong-net
+    driver: bridge
+volumes:
+  kongadata:
+    name: greentable_kongadata
+  pgdata:
+    name: greentable_pgdata
+  rabbitmq_data:
+    name: greentable_rabbitmq_data

@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: C:\ProgramData\chocolatey\lib\kubernetes-kompose\tools\kompose.exe convert -f docker-compose-resolved-w-kong.yml -o kompose-w-kong
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: stripe-api
+  name: stripe-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: stripe-api
+  strategy: {}
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: C:\ProgramData\chocolatey\lib\kubernetes-kompose\tools\kompose.exe convert -f docker-compose-resolved-w-kong.yml -o kompose-w-kong
+        kompose.version: 1.28.0 (c4137012e)
+      creationTimestamp: null
+      labels:
+        io.kompose.network/greentable-kong-net: "true"
+        io.kompose.service: stripe-api
+    spec:
+      containers:
+        - env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: STRIPE_SECRET_KEY
+              value: sk_test_51MjdbwKkGz7KVHvaysD9aV92Xibd5j2jX5yrCt2VK1bP5NB4xkqtQRv7pcbNPKV9O1jfi0LNUHyTIZbusVHGXG2K00ZtZZus1N
+          image: nickyex2/stripe-api
+          imagePullPolicy: Always
+          name: stripe-api
+          ports:
+            - containerPort: 5016
+          resources: {}
+      restartPolicy: Always
+status: {}

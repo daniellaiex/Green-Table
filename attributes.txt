@@ -1,0 +1,73 @@
+// WaitList Attributes
+{
+    "_id": "restaurant_name",
+    "customers": {
+        "customer_name": {
+            "phone": "phone_number",
+            "email": "email",
+            "date": "date",
+            "time": "time"
+        }
+    }
+}
+
+// Customer Attributes
+{
+    "id": "customer_name",
+    "password": "password",
+    "phone": "phone_number",
+    "telegram": "telegram",
+    "email": "email",
+    "first_name": "first_name",
+    "last_name": "last_name",
+    "credit_card": {
+        "card_number": "card_number",
+        "expiration_date": "expiration_date",
+        "security_code": "security_code"
+    },
+}
+
+// Catalog attributes
+{
+    "id": "restaurant_name",
+    "location": {
+        "formatted_adrees": "formatted_address",
+        "postal_code": "postal_code",
+    },
+    "description": "description",
+    "category": "category",
+    "image": ["image"],
+    "website": "website",
+    "phone": "phone"
+    "cuisine": ["cuisine"],
+    "availability": {
+        "date": {
+            "time": "no_of_tables available"
+        }
+    },
+    "avg_rating": "avg_rating",
+    "number_of_ratings": "number_of_ratings",
+}
+
+//Booking attributes
+{
+    "id": "booking_id",
+    "restaurant": "restaurant_name",
+    "customer": "customer_name",
+    "date_created": "date_created",
+    "date": "date",
+    "time": "time",
+    "no_of_pax": "no_of_pax",
+    "pax_details": ["pax1_name", "pax2_name", "pax3_name"],
+    "items_ordered": [],
+    "paid_status": "paid_status",
+}
+
+
+// return statements format
+{
+    "code": 200/300/400
+    "data": {
+        whatever you want to return 
+    }
+}

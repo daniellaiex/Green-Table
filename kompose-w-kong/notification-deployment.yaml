@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: C:\ProgramData\chocolatey\lib\kubernetes-kompose\tools\kompose.exe convert -f docker-compose-resolved-w-kong.yml -o kompose-w-kong
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: notification
+  name: notification
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: notification
+  strategy: {}
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: C:\ProgramData\chocolatey\lib\kubernetes-kompose\tools\kompose.exe convert -f docker-compose-resolved-w-kong.yml -o kompose-w-kong
+        kompose.version: 1.28.0 (c4137012e)
+      creationTimestamp: null
+      labels:
+        io.kompose.network/greentable-kong-net: "true"
+        io.kompose.service: notification
+    spec:
+      containers:
+        - env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: rabbit_host
+              value: rabbitmq
+            - name: rabbit_port
+              value: "5672"
+            - name: telegram_url
+              value: http://10.24.5.232:5015
+            - name: twilio_url
+              value: http://10.24.5.87:5014
+          image: nickyex2/notification
+          imagePullPolicy: Always
+          name: notification
+          resources: {}
+      restartPolicy: Always
+status: {}
